@@ -119,7 +119,7 @@ impl<'a> ToSql for &'a str {
             Ok(c_str) => {
                 ffi::sqlite3_bind_text(stmt,
                                        col,
-                                       c_str.as_ptr(),
+                                       c_str.as_ptr() as *const _,
                                        length as c_int,
                                        ffi::SQLITE_TRANSIENT())
             }
@@ -231,7 +231,7 @@ impl FromSql for String {
         if c_text.is_null() {
             Ok("".to_string())
         } else {
-            let c_slice = CStr::from_ptr(c_text as *const c_char).to_bytes();
+            let c_slice = CStr::from_ptr(c_text as *const _).to_bytes();
             let utf8_str = try!(str::from_utf8(c_slice));
             Ok(utf8_str.into())
         }

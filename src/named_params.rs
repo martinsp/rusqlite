@@ -60,7 +60,7 @@ impl<'conn> Statement<'conn> {
     /// is valid but not a bound parameter of this statement.
     pub fn parameter_index(&self, name: &str) -> Result<Option<i32>> {
         let c_name = try!(str_to_cstring(name));
-        let c_index = unsafe { ffi::sqlite3_bind_parameter_index(self.stmt, c_name.as_ptr()) };
+        let c_index = unsafe { ffi::sqlite3_bind_parameter_index(self.stmt, c_name.as_ptr() as *const _) };
         Ok(match c_index {
             0 => None, // A zero is returned if no matching parameter is found.
             n => Some(n),

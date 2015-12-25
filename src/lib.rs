@@ -97,7 +97,7 @@ pub type SqliteResult<T> = Result<T>;
 pub type Result<T> = result::Result<T, Error>;
 
 unsafe fn errmsg_to_string(errmsg: *const c_char) -> String {
-    let c_slice = CStr::from_ptr(errmsg).to_bytes();
+    let c_slice = CStr::from_ptr(errmsg as *const _).to_bytes();
     let utf8_str = str::from_utf8(c_slice);
     utf8_str.unwrap_or("Invalid string encoding").to_string()
 }
@@ -571,7 +571,7 @@ impl InnerConnection {
                 }
 
                 let mut db: *mut ffi::sqlite3 = mem::uninitialized();
-                let r = ffi::sqlite3_open_v2(c_path.as_ptr(), &mut db, flags.bits(), ptr::null());
+                let r = ffi::sqlite3_open_v2(c_path.as_ptr() as *const _, &mut db, flags.bits(), ptr::null());
                 if r != ffi::SQLITE_OK {
                     let e = if db.is_null() {
                         error_from_sqlite_code(r, None)
@@ -621,7 +621,7 @@ impl InnerConnection {
         let c_sql = try!(str_to_cstring(sql));
         unsafe {
             let r = ffi::sqlite3_exec(self.db(),
-            c_sql.as_ptr(),
+            c_sql.as_ptr() as *const _,
             None,
             ptr::null_mut(),
             ptr::null_mut());
@@ -675,7 +675,7 @@ impl InnerConnection {
             let r = unsafe {
                 let len_with_nul = (sql.len() + 1) as c_int;
                 ffi::sqlite3_prepare_v2(self.db(),
-                c_sql.as_ptr(),
+                c_sql.as_ptr() as *const _,
                 len_with_nul,
                 &mut c_stmt,
                 ptr::null_mut())
@@ -721,7 +721,7 @@ impl<'conn> Statement<'conn> {
         let n = self.column_count;
         let mut cols = Vec::with_capacity(n as usize);
         for i in 0..n {
-            let slice = unsafe { CStr::from_ptr(ffi::sqlite3_column_name(self.stmt, i)) };
+            let slice = unsafe { CStr::from_ptr(ffi::sqlite3_column_name(self.stmt, i) as *const _) };
             let s = str::from_utf8(slice.to_bytes()).unwrap();
             cols.push(s);
         }
@@ -900,7 +900,7 @@ impl<'conn> Statement<'conn> {
 impl<'conn> fmt::Debug for Statement<'conn> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let sql = unsafe {
-            let c_slice = CStr::from_ptr(ffi::sqlite3_sql(self.stmt)).to_bytes();
+            let c_slice = CStr::from_ptr(ffi::sqlite3_sql(self.stmt) as *const _).to_bytes();
             str::from_utf8(c_slice)
         };
         f.debug_struct("Statement")
